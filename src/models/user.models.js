@@ -1,6 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const userSchema = new Schema(
   {
@@ -61,15 +62,14 @@ const userSchema = new Schema(
   { timestamps: true },
 );
 
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function () {
   //  if we dont write isModified then it will hash the password
   //  every time we save the user or make changes in user data
   //  so only hash password when password is modified.
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password")) return;
 
   //  hash the password upto 10 rounds.
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {

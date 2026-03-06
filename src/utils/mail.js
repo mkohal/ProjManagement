@@ -1,4 +1,4 @@
-import mailgen from "mailgen";
+import Mailgen from "mailgen";
 import nodemailer from "nodemailer";
 
 const sendEmail = async (options) => {
@@ -37,7 +37,7 @@ const sendEmail = async (options) => {
   }
 };
 
-const emailVerificationMailContent = async (username, verificationUrl) => {
+const emailVerificationMailContent =  (username, verificationUrl) => {
   return {
     body: {
       name: username,
@@ -58,7 +58,7 @@ const emailVerificationMailContent = async (username, verificationUrl) => {
   };
 };
 
-const forgotPasswordMailContent = async (username, passwordResetUrl) => {
+const forgotPasswordMailContent =  (username, passwordResetUrl) => {
   return {
     body: {
       name: username,
