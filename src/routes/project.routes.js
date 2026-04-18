@@ -59,7 +59,6 @@ router
     mongoIdParamValidator("projectId"),
     validate,
     requireProjectMembership,
-    requireProjectRoles([UserRolesEnum.ADMIN]),
     getProjectMembers,
   )
   .post(

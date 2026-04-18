@@ -1,6 +1,8 @@
 import { User } from "../models/user.models.js";
 import { Project } from "../models/project.models.js";
 import { ProjectMember } from "../models/projectmember.models.js";
+import { Task } from "../models/task.models.js";
+import { SubTask } from "../models/subtask.models.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiResponse } from "../utils/api-response.js";
@@ -123,15 +125,53 @@ const updateProject = asyncHandler(async (req, res) => {
 const deleteProject = asyncHandler(async (req, res) => {
   const { projectId } = req.params;
 
-  const project = await Project.findByIdAndDelete(projectId);
+  const session = await mongoose.startSession();
+  let deletedProject;
 
-  if (!project) {
-    throw new ApiError(404, "Project not found");
+  try {
+    await session.withTransaction(async () => {
+      const project = await Project.findById(projectId).session(session);
+
+      if (!project) {
+        throw new ApiError(404, "Project not found");
+      }
+
+      const projectTasks = await Task.find(
+        { project: new mongoose.Types.ObjectId(projectId) },
+        { _id: 1 },
+      ).session(session);
+
+      const taskIds = projectTasks.map((task) => task._id);
+
+      if (taskIds.length > 0) {
+        await SubTask.deleteMany({
+          task: { $in: taskIds },
+        }).session(session);
+      }
+
+      await Task.deleteMany({
+        project: new mongoose.Types.ObjectId(projectId),
+      }).session(session);
+
+      await ProjectMember.deleteMany({
+        project: new mongoose.Types.ObjectId(projectId),
+      }).session(session);
+
+      await Project.deleteOne({ _id: projectId }).session(session);
+
+      deletedProject = project;
+    });
+  } finally {
+    await session.endSession();
   }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, null, "Project deleted successfully"));
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      deletedProject,
+      "Project and all associated data deleted successfully",
+    ),
+  );
 });
 
 const addMembersToProject = asyncHandler(async (req, res) => {

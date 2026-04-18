@@ -1,58 +1,59 @@
-import { User } from "../models/user.models.js";
-import { Project } from "../models/project.models.js";
-import { Task } from "../models/task.models.js";
+import mongoose from "mongoose";
 import { SubTask } from "../models/subtask.models.js";
-import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiResponse } from "../utils/api-response.js";
-import mongoose from "mongoose";
+import { ApiError } from "../utils/api-error.js";
 import { AvailableTaskStatus } from "../utils/constants.js";
+import {
+  buildAttachments,
+  ensureProjectExists,
+  ensureProjectMemberUser,
+  ensureTaskInProject,
+  ensureSubtaskInProject,
+} from "./task.helpers.js";
 
-const buildAttachments = (files = []) => {
-  return files.map((file) => ({
-    url: `${process.env.SERVER_URL}/images/${file.originalname}`,
-    mimetype: file.mimetype,
-    size: file.size,
-  }));
-};
+const getSubtasksByTaskId = asyncHandler(async (req, res) => {
+  const { projectId, taskId } = req.params;
 
-const findProjectScopedSubTask = async ({ projectId, taskId, subTaskId }) => {
-  const subtask = await SubTask.findById(subTaskId);
+  await ensureProjectExists(projectId);
+  await ensureTaskInProject(projectId, taskId);
 
-  if (!subtask) {
-    throw new ApiError(404, "Subtask not found");
-  }
+  const subtasks = await SubTask.find({
+    task: new mongoose.Types.ObjectId(taskId),
+  })
+    .populate("assignedTo", "avatar username fullName")
+    .populate("assignedBy", "avatar username fullName");
 
-  const parentTask = await Task.findOne({
-    _id: subtask.task,
-    project: projectId,
-  });
+  return res
+    .status(200)
+    .json(new ApiResponse(200, subtasks, "Subtasks fetched successfully"));
+});
 
-  if (!parentTask) {
-    throw new ApiError(404, "Parent task not found");
-  }
+const getSubtaskById = asyncHandler(async (req, res) => {
+  const { projectId, subTaskId } = req.params;
 
-  if (
-    taskId &&
-    parentTask._id.toString() !== new mongoose.Types.ObjectId(taskId).toString()
-  ) {
-    throw new ApiError(404, "Subtask not found in this task");
-  }
+  await ensureProjectExists(projectId);
+  await ensureSubtaskInProject(projectId, subTaskId);
 
-  return { subtask, parentTask };
-};
+  const subtask = await SubTask.findById(subTaskId)
+    .populate("task", "title project")
+    .populate("assignedTo", "avatar username fullName")
+    .populate("assignedBy", "avatar username fullName");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, subtask, "Subtask fetched successfully"));
+});
 
 const createSubtask = asyncHandler(async (req, res) => {
   const { projectId, taskId } = req.params;
   const { title, description, assignedTo, status } = req.body;
 
-  const task = await Task.findOne({
-    _id: taskId,
-    project: projectId,
-  });
+  await ensureProjectExists(projectId);
+  await ensureTaskInProject(projectId, taskId);
 
-  if (!task) {
-    throw new ApiError(404, "Parent task not found");
+  if (assignedTo) {
+    await ensureProjectMemberUser(projectId, assignedTo);
   }
 
   const attachments = buildAttachments(req.files || []);
@@ -67,20 +68,21 @@ const createSubtask = asyncHandler(async (req, res) => {
     attachments,
   });
 
-  const createdSubTask = await SubTask.findById(subtask._id)
+  const createdSubtask = await SubTask.findById(subtask._id)
     .populate("assignedTo", "avatar username fullName")
     .populate("assignedBy", "avatar username fullName");
 
   return res
     .status(201)
-    .json(new ApiResponse(201, createdSubTask, "Subtask created successfully"));
+    .json(new ApiResponse(201, createdSubtask, "Subtask created successfully"));
 });
 
 const updateSubtaskDetails = asyncHandler(async (req, res) => {
-  const { projectId, taskId, subTaskId } = req.params;
+  const { projectId, subTaskId } = req.params;
   const { title, description, assignedTo } = req.body;
 
-  await findProjectScopedSubTask({ projectId, taskId, subTaskId });
+  await ensureProjectExists(projectId);
+  await ensureSubtaskInProject(projectId, subTaskId);
 
   const updateFields = {};
 
@@ -88,138 +90,84 @@ const updateSubtaskDetails = asyncHandler(async (req, res) => {
   if (description !== undefined) updateFields.description = description;
 
   if (assignedTo !== undefined) {
-    updateFields.assignedTo = assignedTo
-      ? new mongoose.Types.ObjectId(assignedTo)
-      : null;
+    if (assignedTo) {
+      await ensureProjectMemberUser(projectId, assignedTo);
+      updateFields.assignedTo = new mongoose.Types.ObjectId(assignedTo);
+    } else {
+      updateFields.assignedTo = null;
+    }
   }
 
-  const files = req.files || [];
-  if (files.length > 0) {
-    updateFields.attachments = buildAttachments(files);
-  }
-
-  const updatedSubTask = await SubTask.findByIdAndUpdate(
-    subTaskId,
-    updateFields,
-    {
-      new: true,
-      runValidators: true,
-    },
-  )
-    .populate("assignedTo", "avatar username fullName")
-    .populate("assignedBy", "avatar username fullName");
-
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        updatedSubTask,
-        "Subtask details updated successfully",
-      ),
-    );
-});
-
-const updateSubtaskStatus = asyncHandler(async (req, res) => {
-  const { projectId, taskId, subTaskId } = req.params;
-  const { status } = req.body;
-
-  await findProjectScopedSubTask({ projectId, taskId, subTaskId });
-
-  if (!AvailableTaskStatus.includes(status)) {
-    throw new ApiError(400, "Invalid subtask status");
-  }
-
-  const updatedSubTask = await SubTask.findByIdAndUpdate(
-    subTaskId,
-    {
-      status,
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
-  )
-    .populate("assignedTo", "avatar username fullName")
-    .populate("assignedBy", "avatar username fullName");
-
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        updatedSubTask,
-        "Subtask status updated successfully",
-      ),
-    );
-});
-
-const deleteSubtask = asyncHandler(async (req, res) => {
-  const { projectId, taskId, subTaskId } = req.params;
-
-  await findProjectScopedSubTask({ projectId, taskId, subTaskId });
-
-  const subtask = await SubTask.findById(subTaskId)
-    .populate("assignedTo", "avatar username fullName")
-    .populate("assignedBy", "avatar username fullName");
-
-  await SubTask.deleteOne({
-    _id: subTaskId,
-  });
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, subtask, "Subtask deleted successfully"));
-});
-
-const getSubtasksForTask = asyncHandler(async (req, res) => {
-  const { projectId, taskId } = req.params;
-
-  const task = await Task.findOne({
-    _id: taskId,
-    project: projectId,
-  });
-
-  if (!task) {
-    throw new ApiError(404, "Parent task not found");
-  }
-
-  const subtasks = await SubTask.find({
-    task: taskId,
+  const updatedSubtask = await SubTask.findByIdAndUpdate(subTaskId, updateFields, {
+    new: true,
+    runValidators: true,
   })
     .populate("assignedTo", "avatar username fullName")
     .populate("assignedBy", "avatar username fullName");
 
   return res
     .status(200)
-    .json(new ApiResponse(200, subtasks, "Subtasks retrieved successfully"));
+    .json(new ApiResponse(200, updatedSubtask, "Subtask updated successfully"));
 });
 
-const getSubtaskById = asyncHandler(async (req, res) => {
-  const { projectId, taskId, subTaskId } = req.params;
+const updateSubtaskStatus = asyncHandler(async (req, res) => {
+  const { projectId, subTaskId } = req.params;
+  const { status } = req.body;
 
-  const { subtask } = await findProjectScopedSubTask({
-    projectId,
-    taskId,
+  await ensureProjectExists(projectId);
+
+  if (!AvailableTaskStatus.includes(status)) {
+    throw new ApiError(400, "Invalid subtask status");
+  }
+
+  await ensureSubtaskInProject(projectId, subTaskId);
+
+  const updatedSubtask = await SubTask.findByIdAndUpdate(
     subTaskId,
-  });
-
-  const populatedSubtask = await SubTask.findById(subtask._id)
+    { status },
+    {
+      new: true,
+      runValidators: true,
+    },
+  )
     .populate("assignedTo", "avatar username fullName")
     .populate("assignedBy", "avatar username fullName");
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, populatedSubtask, "Subtask retrieved successfully"));
+  return res.status(200).json(
+    new ApiResponse(200, updatedSubtask, "Subtask status updated successfully"),
+  );
 });
 
+const deleteSubtask = asyncHandler(async (req, res) => {
+  const { projectId, subTaskId } = req.params;
 
+  await ensureProjectExists(projectId);
+
+  const subtask = await SubTask.findById(subTaskId)
+    .populate("task", "project")
+    .populate("assignedTo", "avatar username fullName")
+    .populate("assignedBy", "avatar username fullName");
+
+  if (!subtask) {
+    throw new ApiError(404, "Subtask not found");
+  }
+
+  if (subtask.task?.project?.toString() !== projectId) {
+    throw new ApiError(404, "Subtask not found in this project");
+  }
+
+  await SubTask.deleteOne({ _id: subtask._id });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, subtask, "Subtask deleted successfully"));
+});
 
 export {
+  getSubtasksByTaskId,
+  getSubtaskById,
   createSubtask,
   updateSubtaskDetails,
   updateSubtaskStatus,
   deleteSubtask,
-  getSubtasksForTask,
-  getSubtaskById,
 };

@@ -56,7 +56,7 @@ const registerUser = asyncHandler(async (req, res) => {
     subject: "Verify your email",
     mailgenContent: emailVerificationMailContent(
       user?.username,
-      `${req.protocol}://${req.get("host")}/api/v1/auth/users/verify-email/${unHashedToken}`,
+      `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
     ),
   });
 
@@ -220,7 +220,7 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
     subject: "Verify your email",
     mailgenContent: emailVerificationMailContent(
       user?.username,
-      `${req.protocol}://${req.get("host")}/api/v1/auth/users/verify-email/${unHashedToken}`,
+      `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
     ),
   });
 
@@ -310,7 +310,7 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
     subject: "Reset your password",
     mailgenContent: forgotPasswordMailContent(
       user?.username,
-      `${req.protocol}://${req.get("host")}/api/v1/users/reset-password/${unHashedToken}`,
+      `${req.protocol}://${req.get("host")}/api/v1/auth/reset-password/${unHashedToken}`,
     ),
   });
 
