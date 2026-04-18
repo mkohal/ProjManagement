@@ -208,6 +208,15 @@ const updateSubtaskStatusValidator = () => {
   ];
 };
 
+const updateMessageValidator = () => {
+  return [
+    body("content")
+      .trim()
+      .notEmpty()
+      .withMessage("Message content is required"),
+  ];
+};
+
 export {
   userRegisterValidator,
   userLoginValidator,
@@ -225,4 +234,5 @@ export {
   createSubtaskValidator,
   updateSubtaskDetailsValidator,
   updateSubtaskStatusValidator,
+  updateMessageValidator,
 };

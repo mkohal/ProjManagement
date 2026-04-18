@@ -3,6 +3,8 @@ import { Project } from "../models/project.models.js";
 import { ProjectMember } from "../models/projectmember.models.js";
 import { Task } from "../models/task.models.js";
 import { SubTask } from "../models/subtask.models.js";
+import { Conversation } from "../models/conversation.models.js";
+import { Message } from "../models/message.models.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiResponse } from "../utils/api-response.js";
@@ -98,6 +100,12 @@ const createProject = asyncHandler(async (req, res) => {
     role: UserRolesEnum.ADMIN,
   });
 
+  await Conversation.create({
+    type: "project",
+    project: new mongoose.Types.ObjectId(project._id),
+    createdBy: new mongoose.Types.ObjectId(req.user._id),
+  });
+
   return res
     .status(201)
     .json(new ApiResponse(201, project, "Project created successfully"));
@@ -149,7 +157,30 @@ const deleteProject = asyncHandler(async (req, res) => {
         }).session(session);
       }
 
+      const projectConversations = await Conversation.find(
+        {
+          type: "project",
+          project: new mongoose.Types.ObjectId(projectId),
+        },
+        { _id: 1 },
+      ).session(session);
+
+      const conversationIds = projectConversations.map(
+        (conversation) => conversation._id,
+      );
+
       await Task.deleteMany({
+        project: new mongoose.Types.ObjectId(projectId),
+      }).session(session);
+
+      if (conversationIds.length > 0) {
+        await Message.deleteMany({
+          conversation: { $in: conversationIds },
+        }).session(session);
+      }
+
+      await Conversation.deleteMany({
+        type: "project",
         project: new mongoose.Types.ObjectId(projectId),
       }).session(session);
 
