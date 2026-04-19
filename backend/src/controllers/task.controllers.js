@@ -11,11 +11,47 @@ import {
   ensureProjectMemberUser,
 } from "./task.helpers.js";
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const ensureUniqueTaskTitleInProject = async ({
+  projectId,
+  title,
+  excludeTaskId = null,
+}) => {
+  const normalizedTitle = title?.trim();
+
+  if (!normalizedTitle) {
+    return;
+  }
+
+  const query = {
+    project: new mongoose.Types.ObjectId(projectId),
+    title: {
+      $regex: `^${escapeRegex(normalizedTitle)}$`,
+      $options: "i",
+    },
+  };
+
+  if (excludeTaskId) {
+    query._id = { $ne: new mongoose.Types.ObjectId(excludeTaskId) };
+  }
+
+  const existingTask = await Task.findOne(query).select("_id");
+
+  if (existingTask) {
+    throw new ApiError(
+      400,
+      "A task with the same title already exists in this project",
+    );
+  }
+};
+
 const createTask = asyncHandler(async (req, res) => {
   const { title, description, assignedTo, status } = req.body;
   const { projectId } = req.params;
 
   await ensureProjectExists(projectId);
+  await ensureUniqueTaskTitleInProject({ projectId, title });
 
   if (assignedTo) {
     await ensureProjectMemberUser(projectId, assignedTo);
@@ -50,9 +86,71 @@ const getTasks = asyncHandler(async (req, res) => {
 
   await ensureProjectExists(projectId);
 
-  const tasks = await Task.find({
-    project: new mongoose.Types.ObjectId(projectId),
-  }).populate("assignedTo", "avatar username fullName");
+  const tasks = await Task.aggregate([
+    {
+      $match: {
+        project: new mongoose.Types.ObjectId(projectId),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "assignedTo",
+        foreignField: "_id",
+        as: "assignedTo",
+      },
+    },
+    {
+      $unwind: {
+        path: "$assignedTo",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "subtasks",
+        let: { taskId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $eq: ["$task", "$$taskId"],
+              },
+            },
+          },
+          {
+            $count: "count",
+          },
+        ],
+        as: "subtaskStats",
+      },
+    },
+    {
+      $addFields: {
+        subtaskCount: {
+          $ifNull: [{ $arrayElemAt: ["$subtaskStats.count", 0] }, 0],
+        },
+      },
+    },
+    {
+      $project: {
+        title: 1,
+        description: 1,
+        project: 1,
+        status: 1,
+        assignedBy: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        subtaskCount: 1,
+        assignedTo: {
+          _id: "$assignedTo._id",
+          avatar: "$assignedTo.avatar",
+          username: "$assignedTo.username",
+          fullName: "$assignedTo.fullName",
+        },
+      },
+    },
+  ]);
 
   return res
     .status(200)
@@ -169,7 +267,14 @@ const updateTaskDetails = asyncHandler(async (req, res) => {
 
   const updateFields = {};
 
-  if (title !== undefined) updateFields.title = title;
+  if (title !== undefined) {
+    await ensureUniqueTaskTitleInProject({
+      projectId,
+      title,
+      excludeTaskId: taskId,
+    });
+    updateFields.title = title;
+  }
   if (description !== undefined) updateFields.description = description;
 
   if (assignedTo !== undefined) {

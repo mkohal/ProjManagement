@@ -34,9 +34,20 @@ const getProjects = asyncHandler(async (req, res) => {
             },
           },
           {
+            $lookup: {
+              from: "tasks",
+              localField: "_id",
+              foreignField: "project",
+              as: "tasks",
+            },
+          },
+          {
             $addFields: {
               members: {
                 $size: "$projectmembers",
+              },
+              taskCount: {
+                $size: "$tasks",
               },
             },
           },
@@ -52,6 +63,7 @@ const getProjects = asyncHandler(async (req, res) => {
         name: "$projects.name",
         description: "$projects.description",
         members: "$projects.members",
+        taskCount: "$projects.taskCount",
         createdBy: "$projects.createdBy",
         createdAt: "$projects.createdAt",
         updatedAt: "$projects.updatedAt",
