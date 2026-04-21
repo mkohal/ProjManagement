@@ -572,27 +572,94 @@ select {
 
 .project-card-compact {
   display: grid;
-  gap: 0.85rem;
-  min-height: 160px;
-  padding: 1.1rem;
+  gap: 1.15rem;
+  min-height: 250px;
+  padding: 1.35rem;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 249, 247, 0.96));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(247, 248, 250, 0.97));
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  border-radius: 20px;
 }
 
 .project-card-body {
   display: grid;
-  gap: 0.45rem;
+  gap: 1.1rem;
 }
 
 .project-card-link {
-  display: block;
+  display: grid;
+  gap: 1.1rem;
   min-width: 0;
+  height: 100%;
+}
+
+.project-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
 }
 
 .project-card-body h3 {
   margin: 0;
-  font-size: 1.1rem;
-  letter-spacing: -0.03em;
+  font-size: 1.9rem;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+}
+
+.project-card-mark {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #eef2ff, #ffffff);
+  border: 1px solid rgba(31, 111, 235, 0.12);
+  overflow: hidden;
+}
+
+.project-card-image {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  object-fit: cover;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  box-shadow: 0 10px 24px rgba(17, 17, 17, 0.08);
+  background: #f3f4f6;
+}
+
+.project-card-mark span {
+  position: absolute;
+  border-radius: 999px;
+}
+
+.project-card-mark-a {
+  width: 22px;
+  height: 8px;
+  top: 12px;
+  left: 13px;
+  background: #1f6feb;
+}
+
+.project-card-mark-b {
+  width: 16px;
+  height: 8px;
+  top: 20px;
+  left: 13px;
+  background: #6f7bf7;
+}
+
+.project-card-mark-c {
+  width: 26px;
+  height: 8px;
+  top: 28px;
+  left: 13px;
+  background: #f25f8b;
+}
+
+.project-card-divider {
+  border-top: 1px dashed rgba(17, 17, 17, 0.12);
 }
 
 .project-role-badge {
@@ -608,8 +675,9 @@ select {
 }
 
 .project-members-text {
-  color: var(--text-faint);
-  font-size: 0.84rem;
+  color: var(--text-soft);
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .project-metrics {
@@ -619,6 +687,66 @@ select {
   flex-wrap: wrap;
   color: var(--text-soft);
   font-size: 0.92rem;
+}
+
+.project-card-members-row {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+  flex-wrap: wrap;
+}
+
+.project-member-stack {
+  display: flex;
+  align-items: center;
+  padding-left: 0.6rem;
+}
+
+.project-member-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid #ffffff;
+  box-shadow: 0 8px 20px rgba(17, 17, 17, 0.08);
+  background: #f3f4f6;
+}
+
+.project-progress-block {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.project-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--text);
+}
+
+.project-progress-header span {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.project-progress-header strong {
+  font-size: 1.05rem;
+}
+
+.project-progress-bar {
+  position: relative;
+  height: 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eaf0;
+}
+
+.project-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7a7ff8 0%, #a487ff 100%);
 }
 
 .project-card-top,

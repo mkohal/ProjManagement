@@ -11,6 +11,14 @@ import { ApiResponse } from "../utils/api-response.js";
 import mongoose from "mongoose";
 import { AvailableUserRole, UserRolesEnum } from "../utils/constants.js";
 
+const getServerBaseUrl = (req) => {
+  if (process.env.SERVER_URL?.trim()) {
+    return process.env.SERVER_URL.trim().replace(/\/$/, "");
+  }
+
+  return `${req.protocol}://${req.get("host")}`;
+};
+
 const getProjects = asyncHandler(async (req, res) => {
   const projects = await ProjectMember.aggregate([
     {
@@ -31,6 +39,22 @@ const getProjects = asyncHandler(async (req, res) => {
               localField: "_id",
               foreignField: "project",
               as: "projectmembers",
+              pipeline: [
+                {
+                  $lookup: {
+                    from: "users",
+                    localField: "user",
+                    foreignField: "_id",
+                    as: "user",
+                  },
+                },
+                {
+                  $unwind: {
+                    path: "$user",
+                    preserveNullAndEmptyArrays: true,
+                  },
+                },
+              ],
             },
           },
           {
@@ -42,12 +66,108 @@ const getProjects = asyncHandler(async (req, res) => {
             },
           },
           {
+            $lookup: {
+              from: "subtasks",
+              let: {
+                taskIds: "$tasks._id",
+              },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $in: ["$task", "$$taskIds"],
+                    },
+                  },
+                },
+              ],
+              as: "subtasks",
+            },
+          },
+          {
             $addFields: {
               members: {
                 $size: "$projectmembers",
               },
+              memberPreview: {
+                $slice: [
+                  {
+                    $map: {
+                      input: "$projectmembers",
+                      as: "projectMember",
+                      in: {
+                        _id: "$$projectMember.user._id",
+                        fullName: "$$projectMember.user.fullName",
+                        username: "$$projectMember.user.username",
+                        avatarUrl: "$$projectMember.user.avatar.url",
+                      },
+                    },
+                  },
+                  3,
+                ],
+              },
               taskCount: {
                 $size: "$tasks",
+              },
+              totalWorkItems: {
+                $add: [
+                  {
+                    $size: "$tasks",
+                  },
+                  {
+                    $size: "$subtasks",
+                  },
+                ],
+              },
+              doneWorkItems: {
+                $add: [
+                  {
+                    $size: {
+                      $filter: {
+                        input: "$tasks",
+                        as: "task",
+                        cond: {
+                          $eq: ["$$task.status", "done"],
+                        },
+                      },
+                    },
+                  },
+                  {
+                    $size: {
+                      $filter: {
+                        input: "$subtasks",
+                        as: "subtask",
+                        cond: {
+                          $eq: ["$$subtask.status", "done"],
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          {
+            $addFields: {
+              progressPercentage: {
+                $cond: [
+                  {
+                    $gt: ["$totalWorkItems", 0],
+                  },
+                  {
+                    $round: [
+                      {
+                        $multiply: [
+                          {
+                            $divide: ["$doneWorkItems", "$totalWorkItems"],
+                          },
+                          100,
+                        ],
+                      },
+                      0,
+                    ],
+                  },
+                  0,
+                ],
               },
             },
           },
@@ -62,7 +182,10 @@ const getProjects = asyncHandler(async (req, res) => {
         _id: "$projects._id",
         name: "$projects.name",
         description: "$projects.description",
+        coverImage: "$projects.coverImage",
         members: "$projects.members",
+        memberPreview: "$projects.memberPreview",
+        progressPercentage: "$projects.progressPercentage",
         taskCount: "$projects.taskCount",
         createdBy: "$projects.createdBy",
         createdAt: "$projects.createdAt",
@@ -93,6 +216,12 @@ const getProjectById = asyncHandler(async (req, res) => {
 
 const createProject = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
+  const coverImage = req.file
+    ? {
+        url: `${getServerBaseUrl(req)}/images/${req.file.filename}`,
+        localPath: req.file.path,
+      }
+    : undefined;
 
   const existingProject = await Project.findOne({ name });
 
@@ -103,6 +232,7 @@ const createProject = asyncHandler(async (req, res) => {
   const project = await Project.create({
     name,
     description,
+    ...(coverImage ? { coverImage } : {}),
     createdBy: new mongoose.Types.ObjectId(req.user._id), // it will convert the string id to mongoose object id
   });
 
@@ -127,9 +257,26 @@ const updateProject = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
   const { projectId } = req.params;
 
+  const updateFields = {};
+
+  if (typeof name !== "undefined") {
+    updateFields.name = name;
+  }
+
+  if (typeof description !== "undefined") {
+    updateFields.description = description;
+  }
+
+  if (req.file) {
+    updateFields.coverImage = {
+      url: `${getServerBaseUrl(req)}/images/${req.file.filename}`,
+      localPath: req.file.path,
+    };
+  }
+
   const project = await Project.findByIdAndUpdate(
     projectId,
-    { name, description },
+    updateFields,
     { new: true, runValidators: true },
   );
 

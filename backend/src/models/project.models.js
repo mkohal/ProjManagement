@@ -11,6 +11,16 @@ const projectSchema = new Schema(
     description: {
       type: String,
     },
+    coverImage: {
+      type: {
+        url: String,
+        localPath: String,
+      },
+      default: {
+        url: "",
+        localPath: "",
+      },
+    },
     createdBy: {
       type: Schema.Types.ObjectId, // means it will refer to another document and that document is user
       ref: "User",

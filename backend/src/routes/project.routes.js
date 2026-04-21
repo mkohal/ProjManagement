@@ -23,6 +23,7 @@ import {
   requireProjectRoles,
   verifyJWT,
 } from "../middlewares/auth.middleware.js";
+import { upload } from "../middlewares/multer.middleware.js";
 import { UserRolesEnum } from "../utils/constants.js";
 
 const router = Router();
@@ -31,12 +32,13 @@ router.use(verifyJWT);
 router
   .route("/")
   .get(getProjects)
-  .post(createProjectValidator(), validate, createProject);
+  .post(upload.single("coverImage"), createProjectValidator(), validate, createProject);
 
 router
   .route("/:projectId")
   .get(mongoIdParamValidator("projectId"), validate, requireProjectMembership, getProjectById)
   .put(
+    upload.single("coverImage"),
     mongoIdParamValidator("projectId"),
     validate,
     requireProjectMembership,

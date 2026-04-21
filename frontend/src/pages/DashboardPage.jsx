@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useCreateProjectMutation, useGetProjectsQuery } from "../services/projectApi";
+import { resolveAssetUrl } from "../utils/assets";
 
 export function DashboardPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -18,22 +19,34 @@ export function DashboardPage() {
     defaultValues: {
       name: "",
       description: "",
+      coverImage: null,
     },
   });
   const projects = data?.data ?? [];
+  const getProjectProgress = (project) =>
+    Number.isFinite(project?.progressPercentage) ? project.progressPercentage : 0;
 
   const closeCreateModal = () => {
     setIsCreateModalOpen(false);
     reset({
       name: "",
       description: "",
+      coverImage: null,
     });
   };
 
   const onCreateProject = async (values) => {
     setSuccessMessage("");
 
-    const response = await createProject(values).unwrap();
+    const formData = new FormData();
+    formData.append("name", values.name?.trim() || "");
+    formData.append("description", values.description?.trim() || "");
+
+    if (values.coverImage?.[0]) {
+      formData.append("coverImage", values.coverImage[0]);
+    }
+
+    const response = await createProject(formData).unwrap();
     const createdProject = response?.data;
 
     closeCreateModal();
@@ -46,51 +59,14 @@ export function DashboardPage() {
 
   return (
     <div className="page-stack">
-      <section className="projects-hero">
-        <div className="page-header">
-          <div>
-            <p className="eyebrow">Projects</p>
-            <h1>Your workspace projects</h1>
-            <p>Browse active workspaces, open a project, or start a new one when the team is ready.</p>
-          </div>
-          <div className="page-header-meta">
-            <span className="pill">{projects.length} total</span>
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => {
-                setSuccessMessage("");
-                reset({
-                  name: "",
-                  description: "",
-                });
-                setIsCreateModalOpen(true);
-              }}
-            >
-              Add project
-            </button>
-          </div>
-        </div>
-
-        <div className="projects-summary-grid">
-          <article className="summary-card">
-            <span>Projects you can access</span>
-            <strong>{projects.length}</strong>
-            <p>Every workspace you belong to is available here for quick access.</p>
-          </article>
-          <article className="summary-card">
-            <span>What you can do</span>
-            <strong>Plan</strong>
-            <p>Create projects, organize tasks, and keep work visible across the team.</p>
-          </article>
-        </div>
-      </section>
 
       {!projects.length && (isLoading || isFetching) ? (
         <p className="panel">Loading projects...</p>
       ) : null}
       {isError ? (
-        <p className="panel">{error?.data?.message || "Failed to load projects."}</p>
+        <p className="panel">
+          {error?.data?.message || "Failed to load projects."}
+        </p>
       ) : null}
 
       <section className="section-heading">
@@ -98,20 +74,88 @@ export function DashboardPage() {
           <p className="eyebrow">Project list</p>
           <h2>Open an existing project</h2>
         </div>
+        <button
+          className="primary-button"
+          type="button"
+          onClick={() => {
+            setSuccessMessage("");
+              reset({
+                name: "",
+                description: "",
+                coverImage: null,
+              });
+              setIsCreateModalOpen(true);
+            }}
+        >
+          Add project
+        </button>
       </section>
 
       <section className="project-grid">
         {projects.map((project) => (
-          <article key={project._id} className="project-card project-card-compact">
-            <div className="project-card-top">
-              <span className="project-role-badge">{project.role}</span>
-            </div>
+          <article
+            key={project._id}
+            className="project-card project-card-compact"
+          >
             <Link className="project-card-link" to={`/projects/${project._id}`}>
-              <div className="project-card-body">
+              <div className="project-card-header">
+                {project.coverImage?.url ? (
+                  <img
+                    className="project-card-image"
+                    src={resolveAssetUrl(project.coverImage.url)}
+                    alt={`${project.name} cover`}
+                  />
+                ) : (
+                  <div className="project-card-mark" aria-hidden="true">
+                    <span className="project-card-mark-a" />
+                    <span className="project-card-mark-b" />
+                    <span className="project-card-mark-c" />
+                  </div>
+                )}
                 <h3>{project.name}</h3>
-                <div className="project-metrics">
-                  <span>{project.members} members</span>
-                  <span>{project.taskCount || 0} tasks</span>
+              </div>
+
+              <div className="project-card-divider" />
+
+              <div className="project-card-body">
+                <div className="project-card-members-row">
+                  <div className="project-member-stack" aria-hidden="true">
+                    {(project.memberPreview || []).map((member) => (
+                      <img
+                        key={member._id || member.username}
+                        className="project-member-avatar"
+                        src={
+                          member.avatarUrl
+                            ? resolveAssetUrl(member.avatarUrl)
+                            : "https://placehold.co/200x200"
+                        }
+                        alt=""
+                      />
+                    ))}
+                  </div>
+                  <span className="project-members-text">
+                    {project.members} {project.members === 1 ? "member" : "members"}
+                  </span>
+                </div>
+
+                <div className="project-progress-block">
+                  <div className="project-progress-header">
+                    <span>Project Progress</span>
+                    <strong>{getProjectProgress(project)}%</strong>
+                  </div>
+                  <div
+                    className="project-progress-bar"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={getProjectProgress(project)}
+                    aria-label={`${project.name} progress`}
+                  >
+                    <span
+                      className="project-progress-fill"
+                      style={{ width: `${getProjectProgress(project)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </Link>
@@ -122,7 +166,8 @@ export function DashboardPage() {
           <div className="project-card project-card-compact empty-state">
             <h3>No projects yet</h3>
             <p>
-              Start your first workspace with the add project button and it will appear here right away.
+              Start your first workspace with the add project button and it will
+              appear here right away.
             </p>
           </div>
         ) : null}
@@ -158,7 +203,10 @@ export function DashboardPage() {
               </button>
             </div>
 
-            <form className="project-form" onSubmit={handleSubmit(onCreateProject)}>
+            <form
+              className="project-form"
+              onSubmit={handleSubmit(onCreateProject)}
+            >
               <label className="field">
                 <span>Project name</span>
                 <input
@@ -180,6 +228,15 @@ export function DashboardPage() {
                 />
               </label>
 
+              <label className="field">
+                <span>Project image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  {...register("coverImage")}
+                />
+              </label>
+
               {createError?.data?.message ? (
                 <p className="form-error">{createError.data.message}</p>
               ) : null}
@@ -192,7 +249,11 @@ export function DashboardPage() {
                 >
                   Cancel
                 </button>
-                <button className="primary-button" type="submit" disabled={isCreating}>
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={isCreating}
+                >
                   {isCreating ? "Creating project..." : "Create project"}
                 </button>
               </div>

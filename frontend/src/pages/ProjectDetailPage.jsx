@@ -93,6 +93,7 @@ export function ProjectDetailPage() {
     defaultValues: {
       name: "",
       description: "",
+      coverImage: null,
     },
   });
   const {
@@ -175,6 +176,7 @@ export function ProjectDetailPage() {
     resetProjectForm({
       name: project?.name || "",
       description: project?.description || "",
+      coverImage: null,
     });
     setIsEditProjectModalOpen(true);
   };
@@ -184,6 +186,7 @@ export function ProjectDetailPage() {
     resetProjectForm({
       name: project?.name || "",
       description: project?.description || "",
+      coverImage: null,
     });
   };
 
@@ -465,15 +468,24 @@ export function ProjectDetailPage() {
 
     if (
       normalizedValues.name === normalizedCurrentProject.name &&
-      normalizedValues.description === normalizedCurrentProject.description
+      normalizedValues.description === normalizedCurrentProject.description &&
+      !values.coverImage?.[0]
     ) {
       setSuccessMessage("No project changes to save.");
       return;
     }
 
+    const formData = new FormData();
+    formData.append("name", normalizedValues.name);
+    formData.append("description", normalizedValues.description);
+
+    if (values.coverImage?.[0]) {
+      formData.append("coverImage", values.coverImage[0]);
+    }
+
     const response = await updateProject({
       projectId,
-      ...normalizedValues,
+      body: formData,
     }).unwrap();
 
     closeEditProjectModal();
@@ -971,6 +983,15 @@ export function ProjectDetailPage() {
                   rows={5}
                   placeholder="Write a short summary of what this project is about."
                   {...registerProject("description")}
+                />
+              </label>
+
+              <label className="field">
+                <span>Project image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  {...registerProject("coverImage")}
                 />
               </label>
 
