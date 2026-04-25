@@ -160,6 +160,48 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, req.user, "Current user fetched successfully"));
 });
 
+const updateCurrentUser = asyncHandler(async (req, res) => {
+  const { username } = req.body;
+  const updateFields = {};
+
+  if (typeof username !== "undefined") {
+    const normalizedUsername = username.trim().toLowerCase();
+
+    const existingUser = await User.findOne({
+      username: normalizedUsername,
+      _id: { $ne: req.user._id },
+    }).select("_id");
+
+    if (existingUser) {
+      throw new ApiError(400, "Username is already taken");
+    }
+
+    updateFields.username = normalizedUsername;
+  }
+
+  if (req.file) {
+    updateFields.avatar = {
+      url: `${req.protocol}://${req.get("host")}/images/${req.file.filename}`,
+      localPath: req.file.path,
+    };
+  }
+
+  if (!Object.keys(updateFields).length) {
+    throw new ApiError(400, "No profile changes provided");
+  }
+
+  const user = await User.findByIdAndUpdate(req.user._id, updateFields, {
+    new: true,
+    runValidators: true,
+  }).select(
+    "-password -refreshToken -emailVerificationExpiry -emailVerificationToken",
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Profile updated successfully"));
+});
+
 const verifyEmail = asyncHandler(async (req, res) => {
   const { verificationToken } = req.params;
 
@@ -378,6 +420,7 @@ export {
   login,
   logoutUser,
   getCurrentUser,
+  updateCurrentUser,
   verifyEmail,
   resendEmailVerification,
   refreshAccessToken,

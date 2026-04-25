@@ -1,5 +1,6 @@
 import { body, param } from "express-validator";
 import {
+  AvailableProjectStatus,
   AvailableTaskStatus,
   AvailableUserRole,
 } from "../utils/constants.js";
@@ -45,6 +46,16 @@ const changeCurrentPasswordValidator = () => {
   ];
 };
 
+const updateCurrentUserValidator = () => {
+  return [
+    body("username")
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage("Username cannot be empty"),
+  ];
+};
+
 const forgotPasswordRequestValidator = () => {
   return [
     body("email")
@@ -70,6 +81,10 @@ const createProjectValidator = () => {
   return [
     body("name").trim().notEmpty().withMessage("Project name is required"),
     body("description").optional().trim(),
+    body("status")
+      .optional()
+      .isIn(AvailableProjectStatus)
+      .withMessage("Project status is invalid"),
   ];
 };
 
@@ -81,6 +96,18 @@ const updateProjectValidator = () => {
       .notEmpty()
       .withMessage("Project name cannot be empty"),
     body("description").optional().trim(),
+    body("status")
+      .optional()
+      .isIn(AvailableProjectStatus)
+      .withMessage("Project status is invalid"),
+  ];
+};
+
+const toggleProjectStarValidator = () => {
+  return [
+    body("starred")
+      .isBoolean()
+      .withMessage("Starred value must be true or false"),
   ];
 };
 
@@ -221,10 +248,12 @@ export {
   userRegisterValidator,
   userLoginValidator,
   changeCurrentPasswordValidator,
+  updateCurrentUserValidator,
   forgotPasswordRequestValidator,
   resetForgotPasswordValidator,
   createProjectValidator,
   updateProjectValidator,
+  toggleProjectStarValidator,
   addMemberToProjectValidator,
   updateMemberRoleValidator,
   mongoIdParamValidator,

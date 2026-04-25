@@ -5,6 +5,15 @@ export const UserRolesEnum = {
 
 export const AvailableUserRole = Object.values(UserRolesEnum);
 
+export const ProjectStatusEnum = {
+  PLANNING: "planning",
+  ACTIVE: "active",
+  ON_HOLD: "on_hold",
+  COMPLETED: "completed",
+};
+
+export const AvailableProjectStatus = Object.values(ProjectStatusEnum);
+
 export const TaskStatusEnum = {
   TODO: "todo",
   ON_HOLD: "on_hold",

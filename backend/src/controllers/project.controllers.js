@@ -182,6 +182,7 @@ const getProjects = asyncHandler(async (req, res) => {
         _id: "$projects._id",
         name: "$projects.name",
         description: "$projects.description",
+        status: "$projects.status",
         coverImage: "$projects.coverImage",
         members: "$projects.members",
         memberPreview: "$projects.memberPreview",
@@ -190,6 +191,7 @@ const getProjects = asyncHandler(async (req, res) => {
         createdBy: "$projects.createdBy",
         createdAt: "$projects.createdAt",
         updatedAt: "$projects.updatedAt",
+        starred: "$starred",
         role: 1,
       },
     },
@@ -215,7 +217,7 @@ const getProjectById = asyncHandler(async (req, res) => {
 });
 
 const createProject = asyncHandler(async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, status } = req.body;
   const coverImage = req.file
     ? {
         url: `${getServerBaseUrl(req)}/images/${req.file.filename}`,
@@ -232,6 +234,7 @@ const createProject = asyncHandler(async (req, res) => {
   const project = await Project.create({
     name,
     description,
+    ...(status ? { status } : {}),
     ...(coverImage ? { coverImage } : {}),
     createdBy: new mongoose.Types.ObjectId(req.user._id), // it will convert the string id to mongoose object id
   });
@@ -254,7 +257,7 @@ const createProject = asyncHandler(async (req, res) => {
 });
 
 const updateProject = asyncHandler(async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, status } = req.body;
   const { projectId } = req.params;
 
   const updateFields = {};
@@ -265,6 +268,10 @@ const updateProject = asyncHandler(async (req, res) => {
 
   if (typeof description !== "undefined") {
     updateFields.description = description;
+  }
+
+  if (typeof status !== "undefined") {
+    updateFields.status = status;
   }
 
   if (req.file) {
@@ -287,6 +294,33 @@ const updateProject = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, project, "Project updated successfully"));
+});
+
+const toggleProjectStar = asyncHandler(async (req, res) => {
+  const { projectId } = req.params;
+  const { starred } = req.body;
+
+  const projectMember = await ProjectMember.findOneAndUpdate(
+    {
+      user: new mongoose.Types.ObjectId(req.user._id),
+      project: new mongoose.Types.ObjectId(projectId),
+    },
+    {
+      starred,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  if (!projectMember) {
+    throw new ApiError(404, "Project membership not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, projectMember, "Project star updated successfully"));
 });
 
 const deleteProject = asyncHandler(async (req, res) => {
@@ -552,6 +586,7 @@ export {
   getProjectById,
   createProject,
   updateProject,
+  toggleProjectStar,
   deleteProject,
   addMembersToProject,
   getProjectMembers,
