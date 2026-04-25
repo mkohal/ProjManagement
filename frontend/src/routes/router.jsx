@@ -7,6 +7,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { ProjectDetailPage } from "../pages/ProjectDetailPage";
 import { TaskDetailPage } from "../pages/TaskDetailPage";
+import { SettingsPage } from "../pages/SettingsPage";
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +44,10 @@ export const router = createBrowserRouter([
           {
             path: "/projects/:projectId/tasks/:taskId",
             element: <TaskDetailPage />,
+          },
+          {
+            path: "/settings",
+            element: <SettingsPage />,
           },
         ],
       },

@@ -38,6 +38,17 @@ export const projectApi = baseApi.injectEndpoints({
         { type: "Project", id: projectId },
       ],
     }),
+    toggleProjectStar: builder.mutation({
+      query: ({ projectId, starred }) => ({
+        url: `/projects/${projectId}/star`,
+        method: "PATCH",
+        body: { starred },
+      }),
+      invalidatesTags: (result, error, { projectId }) => [
+        "Project",
+        { type: "Project", id: projectId },
+      ],
+    }),
     deleteProject: builder.mutation({
       query: (projectId) => ({
         url: `/projects/${projectId}`,
@@ -90,6 +101,7 @@ export const {
   useGetProjectByIdQuery,
   useCreateProjectMutation,
   useUpdateProjectMutation,
+  useToggleProjectStarMutation,
   useDeleteProjectMutation,
   useGetProjectMembersQuery,
   useAddProjectMemberMutation,
