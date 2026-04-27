@@ -8,7 +8,7 @@ import {
   useToggleProjectStarMutation,
 } from "../services/projectApi";
 import { resolveAssetUrl } from "../utils/assets";
-import { AddIcon, DownArrow, SearchIcon } from "../icons/icons";
+import { CloseIcon, FilterIcon, SearchIcon } from "../icons/icons";
 
 const projectStatusOptions = [
   { value: "all", label: "All Status" },
@@ -122,23 +122,7 @@ export function DashboardPage() {
   return (
     <div className="page-stack">
       <section className="projects-toolbar">
-        <div className="projects-search-group">
-          <h2>Projects</h2>
-          <div
-            type="button"
-            onClick={() => {
-              setSuccessMessage("");
-              reset({
-                name: "",
-                description: "",
-                coverImage: null,
-              });
-              setIsCreateModalOpen(true);
-            }}
-          >
-            <AddIcon />
-          </div>
-        </div>
+        <h2>Projects</h2>
 
         <label className="projects-search">
           <SearchIcon />
@@ -172,7 +156,7 @@ export function DashboardPage() {
         <div className="projects-filter-group">
           <label className="projects-status-filter">
             <span className="projects-filter-icon">
-              <DownArrow />
+              <FilterIcon />
             </span>
             <select
               value={statusFilter}
@@ -185,6 +169,22 @@ export function DashboardPage() {
               ))}
             </select>
           </label>
+
+          <button
+            className="primary-button projects-add-button"
+            type="button"
+            onClick={() => {
+              setSuccessMessage("");
+              reset({
+                name: "",
+                description: "",
+                coverImage: null,
+              });
+              setIsCreateModalOpen(true);
+            }}
+          >
+            Add project
+          </button>
         </div>
       </section>
 
@@ -199,7 +199,12 @@ export function DashboardPage() {
 
       <section className="project-grid project-grid-dashboard">
         {filteredProjects.map((project) => (
-          <article key={project._id} className="project-dashboard-card">
+          <article
+            key={project._id}
+            className={`project-dashboard-card project-dashboard-card-${project.status || "planning"}${
+              project.starred ? " is-starred" : ""
+            }`}
+          >
             <Link
               className="project-dashboard-link"
               to={`/projects/${project._id}`}
@@ -234,7 +239,7 @@ export function DashboardPage() {
                     }
                     title={project.starred ? "Unstar project" : "Star project"}
                   >
-                    ☆
+                    {project.starred ? "★" : "☆"}
                   </button>
                 </div>
               </div>
@@ -292,8 +297,16 @@ export function DashboardPage() {
 
         {!isLoading && !filteredProjects.length ? (
           <div className="project-dashboard-card empty-state">
-            <h3>No matching projects</h3>
-            <p>Try another search, switch tabs, or change the status filter.</p>
+            <h3>
+              {activeTab === "starred"
+                ? "No starred projects yet"
+                : "No matching projects"}
+            </h3>
+            <p>
+              {activeTab === "starred"
+                ? "Star a project and it will appear here."
+                : "Try another search, switch tabs, or change the status filter."}
+            </p>
           </div>
         ) : null}
       </section>
@@ -315,7 +328,6 @@ export function DashboardPage() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">Create project</p>
                 <h2 id="create-project-title">Start a new workspace</h2>
               </div>
               <button
@@ -324,7 +336,7 @@ export function DashboardPage() {
                 onClick={closeCreateModal}
                 aria-label="Close create project popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 

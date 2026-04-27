@@ -3,6 +3,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
+  useAddProjectMemberMutation,
   useDeleteProjectMutation,
   useGetProjectByIdQuery,
   useGetProjectMembersQuery,
@@ -20,6 +21,14 @@ import {
   useUpdateTaskDetailsMutation,
   useUpdateTaskStatusMutation,
 } from "../services/taskApi";
+import {
+  AddIcon,
+  CloseIcon,
+  DeleteIcon,
+  EditIcon,
+  FilterIcon,
+  SearchIcon,
+} from "../icons/icons";
 
 const taskStatusOptions = [
   { value: "todo", label: "To do" },
@@ -36,12 +45,38 @@ const projectStatusOptions = [
   { value: "completed", label: "Completed" },
 ];
 
+const taskFilterOptions = [
+  { value: "all", label: "All Status" },
+  ...taskStatusOptions,
+];
+
 const formatStatusLabel = (status) =>
   taskStatusOptions.find((option) => option.value === status)?.label || "To do";
 
+const getTaskStatusPillClass = (status) => {
+  switch (status) {
+    case "done":
+      return "status-pill status-pill-done";
+    case "on_hold":
+      return "status-pill status-pill-on-hold";
+    case "in_progress":
+      return "status-pill status-pill-in-progress";
+    case "testing":
+      return "status-pill status-pill-testing";
+    case "todo":
+    default:
+      return "status-pill status-pill-todo";
+  }
+};
+
 export function ProjectDetailPage() {
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
-  const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] = useState(false);
+  const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] =
+    useState(false);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [isMembersDrawerOpen, setIsMembersDrawerOpen] = useState(false);
+  const [taskSearchValue, setTaskSearchValue] = useState("");
+  const [taskStatusFilter, setTaskStatusFilter] = useState("all");
   const [taskModalMode, setTaskModalMode] = useState("create");
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
@@ -50,23 +85,37 @@ export function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const currentUser = useSelector((state) => state.auth.user);
-  const { data: projectData, isLoading: projectLoading } = useGetProjectByIdQuery(projectId);
-  const { data: membersData, isLoading: membersLoading } = useGetProjectMembersQuery(projectId);
-  const { data: tasksData, isLoading: tasksLoading } = useGetTasksQuery(projectId);
+  const { data: projectData, isLoading: projectLoading } =
+    useGetProjectByIdQuery(projectId);
+  const { data: membersData, isLoading: membersLoading } =
+    useGetProjectMembersQuery(projectId);
+  const { data: tasksData, isLoading: tasksLoading } =
+    useGetTasksQuery(projectId);
   const { data: activeTaskDetailsData } = useGetTaskByIdQuery(
     { projectId, taskId: activeTask?._id },
     {
-      skip: !activeTask?._id || !isCreateTaskModalOpen || taskModalMode !== "edit",
+      skip:
+        !activeTask?._id || !isCreateTaskModalOpen || taskModalMode !== "edit",
     },
   );
   const [createTask, { isLoading: isCreatingTask, error: createTaskError }] =
     useCreateTaskMutation();
-  const [updateProject, { isLoading: isUpdatingProject, error: updateProjectError }] =
-    useUpdateProjectMutation();
-  const [deleteProject, { isLoading: isDeletingProject, error: deleteProjectError }] =
-    useDeleteProjectMutation();
-  const [updateTaskDetails, { isLoading: isUpdatingTask, error: updateTaskError }] =
-    useUpdateTaskDetailsMutation();
+  const [
+    updateProject,
+    { isLoading: isUpdatingProject, error: updateProjectError },
+  ] = useUpdateProjectMutation();
+  const [
+    addProjectMember,
+    { isLoading: isAddingMember, error: addMemberError },
+  ] = useAddProjectMemberMutation();
+  const [
+    deleteProject,
+    { isLoading: isDeletingProject, error: deleteProjectError },
+  ] = useDeleteProjectMutation();
+  const [
+    updateTaskDetails,
+    { isLoading: isUpdatingTask, error: updateTaskError },
+  ] = useUpdateTaskDetailsMutation();
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const [updateSubtaskDetails] = useUpdateSubtaskDetailsMutation();
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
@@ -92,6 +141,17 @@ export function ProjectDetailPage() {
     },
   });
   const {
+    register: registerMember,
+    handleSubmit: handleSubmitMember,
+    reset: resetMemberForm,
+    formState: { errors: memberFormErrors },
+  } = useForm({
+    defaultValues: {
+      email: "",
+      role: "member",
+    },
+  });
+  const {
     register: registerProject,
     handleSubmit: handleSubmitProject,
     reset: resetProjectForm,
@@ -104,13 +164,11 @@ export function ProjectDetailPage() {
       coverImage: null,
     },
   });
-  const {
-    fields: existingSubtaskFields,
-    remove: removeExistingSubtask,
-  } = useFieldArray({
-    control,
-    name: "existingSubtasks",
-  });
+  const { fields: existingSubtaskFields, remove: removeExistingSubtask } =
+    useFieldArray({
+      control,
+      name: "existingSubtasks",
+    });
   const { fields, append, remove } = useFieldArray({
     control,
     name: "subtasks",
@@ -126,6 +184,17 @@ export function ProjectDetailPage() {
     [members, currentUser?._id],
   );
   const isAdmin = currentMembership?.role === "admin";
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const matchesSearch = task.title
+        ?.toLowerCase()
+        .includes(taskSearchValue.trim().toLowerCase());
+      const matchesStatus =
+        taskStatusFilter === "all" ? true : task.status === taskStatusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [taskSearchValue, taskStatusFilter, tasks]);
 
   useEffect(() => {
     if (taskModalMode !== "edit" || !activeTask || !activeTaskDetails) {
@@ -200,6 +269,14 @@ export function ProjectDetailPage() {
     });
   };
 
+  const closeAddMemberModal = () => {
+    setIsAddMemberModalOpen(false);
+    resetMemberForm({
+      email: "",
+      role: "member",
+    });
+  };
+
   const openEditTaskModal = (task) => {
     setSuccessMessage("");
     setTaskModalMode("edit");
@@ -218,8 +295,8 @@ export function ProjectDetailPage() {
 
   const onSubmitTaskModal = async (values) => {
     setSuccessMessage("");
-    const validSubtasks = (values.subtasks || []).filter(
-      (subtask) => subtask?.title?.trim(),
+    const validSubtasks = (values.subtasks || []).filter((subtask) =>
+      subtask?.title?.trim(),
     );
 
     if (taskModalMode === "edit" && activeTask) {
@@ -240,7 +317,8 @@ export function ProjectDetailPage() {
         normalizedValues.title !== normalizedCurrentTask.title ||
         normalizedValues.description !== normalizedCurrentTask.description ||
         normalizedValues.assignedTo !== normalizedCurrentTask.assignedTo;
-      const hasStatusChanged = normalizedValues.status !== normalizedCurrentTask.status;
+      const hasStatusChanged =
+        normalizedValues.status !== normalizedCurrentTask.status;
 
       const changedExistingSubtasks = (values.existingSubtasks || []).filter(
         (subtask) => {
@@ -253,10 +331,12 @@ export function ProjectDetailPage() {
           }
 
           return (
-            (subtask.title?.trim() || "") !== (originalSubtask.title?.trim() || "") ||
+            (subtask.title?.trim() || "") !==
+              (originalSubtask.title?.trim() || "") ||
             (subtask.description?.trim() || "") !==
               (originalSubtask.description?.trim() || "") ||
-            (subtask.assignedTo || "") !== (originalSubtask.assignedTo?._id || "") ||
+            (subtask.assignedTo || "") !==
+              (originalSubtask.assignedTo?._id || "") ||
             (subtask.status || "todo") !== (originalSubtask.status || "todo")
           );
         },
@@ -329,10 +409,12 @@ export function ProjectDetailPage() {
             );
 
             const detailsChanged =
-              (subtask.title?.trim() || "") !== (originalSubtask?.title?.trim() || "") ||
+              (subtask.title?.trim() || "") !==
+                (originalSubtask?.title?.trim() || "") ||
               (subtask.description?.trim() || "") !==
                 (originalSubtask?.description?.trim() || "") ||
-              (subtask.assignedTo || "") !== (originalSubtask?.assignedTo?._id || "");
+              (subtask.assignedTo || "") !==
+                (originalSubtask?.assignedTo?._id || "");
 
             if (detailsChanged) {
               await updateSubtaskDetails({
@@ -344,7 +426,9 @@ export function ProjectDetailPage() {
               }).unwrap();
             }
 
-            if ((subtask.status || "todo") !== (originalSubtask?.status || "todo")) {
+            if (
+              (subtask.status || "todo") !== (originalSubtask?.status || "todo")
+            ) {
               await updateSubtaskStatus({
                 projectId,
                 subTaskId: subtask.subTaskId,
@@ -523,6 +607,21 @@ export function ProjectDetailPage() {
     });
   };
 
+  const handleAddMember = async (values) => {
+    const response = await addProjectMember({
+      projectId,
+      email: values.email.trim(),
+      role: values.role,
+    }).unwrap();
+
+    closeAddMemberModal();
+    setSuccessMessage(
+      response?.data?.role
+        ? `${values.email.trim()} has been added to this project.`
+        : "Member added successfully.",
+    );
+  };
+
   if (projectLoading) {
     return <p className="panel">Loading project...</p>;
   }
@@ -531,116 +630,142 @@ export function ProjectDetailPage() {
     <div className="page-stack">
       <section className="hero-panel">
         <div className="hero-actions">
-          <div>
-            <p className="eyebrow">Project overview</p>
+          <div className="project-hero-text">
             <h1>{project?.name}</h1>
             <p>{project?.description || "No description added yet."}</p>
           </div>
           {isAdmin ? (
             <div className="task-detail-actions">
               <button
-                className="secondary-button"
+                className="action-icon-button action-icon-button-edit"
                 type="button"
                 onClick={openEditProjectModal}
+                aria-label="Edit project"
+                title="Edit project"
               >
-                Edit project
+                <EditIcon />
               </button>
               <button
-                className="danger-button"
+                className="action-icon-button action-icon-button-delete"
                 type="button"
                 onClick={() => setIsDeleteProjectModalOpen(true)}
+                aria-label="Delete project"
+                title="Delete project"
               >
-                Delete project
+                <DeleteIcon />
               </button>
             </div>
           ) : null}
         </div>
-      </section>
+        <div className="project-hero-summary-row">
+          <article className="stat-card project-hero-summary-card">
+            <span>Tasks</span>
+            <strong>{tasksLoading ? "..." : tasks.length}</strong>
+          </article>
 
-      <section className="stats-grid">
-        <article className="stat-card">
-          <span>Members</span>
-          <strong>{membersLoading ? "..." : members.length}</strong>
-        </article>
-        <article className="stat-card">
-          <span>Tasks</span>
-          <strong>{tasksLoading ? "..." : tasks.length}</strong>
-        </article>
-      </section>
-
-      <section className="panel">
-        <details className="members-dropdown">
-          <summary className="members-dropdown-trigger">
-            <div>
-              <p className="eyebrow">Members</p>
-              <h2>View project members</h2>
-            </div>
-            <span className="members-dropdown-count">
-              {membersLoading ? "..." : `${members.length} members`}
-            </span>
-          </summary>
-
-          <div className="members-dropdown-content list-stack">
-            {members.map((member) => (
-              <div className="list-row" key={member._id || member.user?._id}>
-                <div>
-                  <strong>{member.user?.fullName || member.user?.username}</strong>
-                  <p>@{member.user?.username || "member"}</p>
-                </div>
-                <span className="pill">{member.role}</span>
+          <div className="project-hero-members-card">
+            <div className="members-summary-card">
+              <div className="members-summary-copy">
+                <span>Members</span>
+                <strong>
+                  {membersLoading ? "..." : `${members.length} members`}
+                </strong>
               </div>
-            ))}
-            {!membersLoading && !members.length ? <p>No members found.</p> : null}
+
+              <div className="members-summary-actions">
+                {isAdmin ? (
+                  <button
+                    className="action-icon-button action-icon-button-edit"
+                    type="button"
+                    onClick={() => {
+                      setSuccessMessage("");
+                      setIsAddMemberModalOpen(true);
+                    }}
+                    aria-label="Add member"
+                    title="Add member"
+                  >
+                    <AddIcon />
+                  </button>
+                ) : null}
+
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => setIsMembersDrawerOpen(true)}
+                >
+                  View all members
+                </button>
+              </div>
+            </div>
           </div>
-        </details>
+        </div>
       </section>
 
       <section className="panel">
         <div className="section-heading">
-          <h2>Tasks</h2>
+          <h2 className="subHeading">Tasks</h2>
           {isAdmin ? (
             <button
-              className="icon-button section-icon-button"
+              className="primary-button projects-add-button"
               type="button"
               onClick={openCreateTaskModal}
-              aria-label="Add task"
               title="Add task"
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M12 5V19M5 12H19"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
+              Add task
             </button>
           ) : null}
         </div>
+        <div className="project-task-toolbar">
+            <label className="projects-search project-task-search">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                value={taskSearchValue}
+                onChange={(event) => setTaskSearchValue(event.target.value)}
+              />
+            </label>
+
+            <label className="projects-status-filter project-task-filter">
+              <span className="projects-filter-icon">
+                <FilterIcon />
+              </span>
+              <select
+                value={taskStatusFilter}
+                onChange={(event) => setTaskStatusFilter(event.target.value)}
+              >
+                {taskFilterOptions.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+        </div>
         <div className="list-stack">
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <div className="list-row task-list-row" key={task._id}>
-              <Link className="task-row-link" to={`/projects/${projectId}/tasks/${task._id}`}>
+              <Link
+                className="task-row-link"
+                to={`/projects/${projectId}/tasks/${task._id}`}
+              >
                 <div>
                   <strong>{task.title}</strong>
                   <p className="task-meta">
                     Assigned to{" "}
-                    {task.assignedTo?.fullName || task.assignedTo?.username || "nobody yet"}
+                    {task.assignedTo?.fullName ||
+                      task.assignedTo?.username ||
+                      "nobody yet"}
                   </p>
                   <p className="task-meta">
-                    {task.subtaskCount ? `${task.subtaskCount} subtasks` : "No subtasks"}
+                    {task.subtaskCount
+                      ? `${task.subtaskCount} subtasks`
+                      : "No subtasks"}
                   </p>
                 </div>
               </Link>
               <div className="task-row-actions">
-                <label className="status-pill">
+                <label className={getTaskStatusPillClass(task.status)}>
                   <span className="sr-only">Update task status</span>
                   <select
                     value={task.status || "todo"}
@@ -664,7 +789,13 @@ export function ProjectDetailPage() {
               </div>
             </div>
           ))}
-          {!tasksLoading && !tasks.length ? <p>No tasks found.</p> : null}
+          {!tasksLoading && !filteredTasks.length ? (
+            <p>
+              {taskSearchValue || taskStatusFilter !== "all"
+                ? "No tasks match your current search or filter."
+                : "No tasks found."}
+            </p>
+          ) : null}
         </div>
       </section>
 
@@ -685,9 +816,10 @@ export function ProjectDetailPage() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">{taskModalMode === "edit" ? "Edit task" : "Create task"}</p>
                 <h2 id="task-modal-title">
-                  {taskModalMode === "edit" ? "Update task details" : "Add task and subtasks"}
+                  {taskModalMode === "edit"
+                    ? "Update task details"
+                    : "Add task and subtasks"}
                 </h2>
               </div>
               <button
@@ -696,11 +828,14 @@ export function ProjectDetailPage() {
                 onClick={closeTaskModal}
                 aria-label="Close create task popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 
-            <form className="project-form" onSubmit={handleSubmit(onSubmitTaskModal)}>
+            <form
+              className="project-form"
+              onSubmit={handleSubmit(onSubmitTaskModal)}
+            >
               <label className="field">
                 <span>Task title</span>
                 <input
@@ -749,25 +884,26 @@ export function ProjectDetailPage() {
 
               {taskModalMode === "edit" && existingSubtasks.length ? (
                 <div className="subtask-builder">
-                  <div className="section-heading">
-                    <div>
-                      <p className="eyebrow">Existing subtasks</p>
+                <div className="section-heading">
+                  <div>
                       <h3>Current subtasks for this task</h3>
-                    </div>
                   </div>
+                </div>
 
                   <div className="existing-subtask-list">
                     {existingSubtaskFields.map((field, index) => (
                       <div className="existing-subtask-card" key={field.id}>
                         <div className="subtask-draft-header">
                           <strong>Existing subtask {index + 1}</strong>
-                            <button
-                              className="text-button danger-text-button"
-                              type="button"
-                              onClick={() => stageExistingSubtaskDeletion(index)}
-                            >
-                              Delete
-                            </button>
+                          <button
+                            className="action-icon-button action-icon-button-delete action-icon-button-compact"
+                            type="button"
+                            onClick={() => stageExistingSubtaskDeletion(index)}
+                            aria-label={`Delete existing subtask ${index + 1}`}
+                            title="Delete subtask"
+                          >
+                            <DeleteIcon />
+                          </button>
                         </div>
 
                         <label className="field">
@@ -784,18 +920,28 @@ export function ProjectDetailPage() {
                           <textarea
                             rows={3}
                             placeholder="Subtask description"
-                            {...register(`existingSubtasks.${index}.description`)}
+                            {...register(
+                              `existingSubtasks.${index}.description`,
+                            )}
                           />
                         </label>
 
                         <div className="form-grid">
                           <label className="field">
                             <span>Assign to</span>
-                            <select {...register(`existingSubtasks.${index}.assignedTo`)}>
+                            <select
+                              {...register(
+                                `existingSubtasks.${index}.assignedTo`,
+                              )}
+                            >
                               <option value="">Unassigned</option>
                               {members.map((member) => (
-                                <option key={member.user?._id} value={member.user?._id}>
-                                  {member.user?.fullName || member.user?.username}
+                                <option
+                                  key={member.user?._id}
+                                  value={member.user?._id}
+                                >
+                                  {member.user?.fullName ||
+                                    member.user?.username}
                                 </option>
                               ))}
                             </select>
@@ -803,7 +949,9 @@ export function ProjectDetailPage() {
 
                           <label className="field">
                             <span>Status</span>
-                            <select {...register(`existingSubtasks.${index}.status`)}>
+                            <select
+                              {...register(`existingSubtasks.${index}.status`)}
+                            >
                               {taskStatusOptions.map((status) => (
                                 <option key={status.value} value={status.value}>
                                   {status.label}
@@ -821,9 +969,6 @@ export function ProjectDetailPage() {
               <div className="subtask-builder">
                 <div className="section-heading">
                   <div>
-                    <p className="eyebrow">
-                      {taskModalMode === "edit" ? "Add subtasks" : "Subtasks"}
-                    </p>
                     <h3>
                       {taskModalMode === "edit"
                         ? "Add more work items to this task"
@@ -882,11 +1027,17 @@ export function ProjectDetailPage() {
                         <div className="form-grid">
                           <label className="field">
                             <span>Assign to</span>
-                            <select {...register(`subtasks.${index}.assignedTo`)}>
+                            <select
+                              {...register(`subtasks.${index}.assignedTo`)}
+                            >
                               <option value="">Unassigned</option>
                               {members.map((member) => (
-                                <option key={member.user?._id} value={member.user?._id}>
-                                  {member.user?.fullName || member.user?.username}
+                                <option
+                                  key={member.user?._id}
+                                  value={member.user?._id}
+                                >
+                                  {member.user?.fullName ||
+                                    member.user?.username}
                                 </option>
                               ))}
                             </select>
@@ -915,9 +1066,15 @@ export function ProjectDetailPage() {
                 )}
               </div>
 
-              {(taskModalMode === "create" ? createTaskError : updateTaskError)?.data?.message ? (
+              {(taskModalMode === "create" ? createTaskError : updateTaskError)
+                ?.data?.message ? (
                 <p className="form-error">
-                  {(taskModalMode === "create" ? createTaskError : updateTaskError).data.message}
+                  {
+                    (taskModalMode === "create"
+                      ? createTaskError
+                      : updateTaskError
+                    ).data.message
+                  }
                 </p>
               ) : null}
 
@@ -932,7 +1089,9 @@ export function ProjectDetailPage() {
                 <button
                   className="primary-button"
                   type="submit"
-                  disabled={taskModalMode === "create" ? isCreatingTask : isUpdatingTask}
+                  disabled={
+                    taskModalMode === "create" ? isCreatingTask : isUpdatingTask
+                  }
                 >
                   {taskModalMode === "create"
                     ? isCreatingTask
@@ -963,7 +1122,6 @@ export function ProjectDetailPage() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">Edit project</p>
                 <h2 id="edit-project-title">Update project details</h2>
               </div>
               <button
@@ -972,11 +1130,14 @@ export function ProjectDetailPage() {
                 onClick={closeEditProjectModal}
                 aria-label="Close edit project popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 
-            <form className="project-form" onSubmit={handleSubmitProject(onSubmitProjectModal)}>
+            <form
+              className="project-form"
+              onSubmit={handleSubmitProject(onSubmitProjectModal)}
+            >
               <label className="field">
                 <span>Project name</span>
                 <input
@@ -1032,7 +1193,11 @@ export function ProjectDetailPage() {
                 >
                   Cancel
                 </button>
-                <button className="primary-button" type="submit" disabled={isUpdatingProject}>
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={isUpdatingProject}
+                >
                   {isUpdatingProject ? "Saving..." : "Save changes"}
                 </button>
               </div>
@@ -1056,7 +1221,6 @@ export function ProjectDetailPage() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">Delete project</p>
                 <h2 id="delete-project-title">Delete this project?</h2>
               </div>
               <button
@@ -1065,13 +1229,13 @@ export function ProjectDetailPage() {
                 onClick={() => setIsDeleteProjectModalOpen(false)}
                 aria-label="Close delete project popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 
             <p className="muted-text">
-              This will permanently remove the project, its tasks, its subtasks, and all related
-              membership links.
+              This will permanently remove the project, its tasks, its subtasks,
+              and all related membership links.
             </p>
             {deleteProjectError?.data?.message ? (
               <p className="form-error">{deleteProjectError.data.message}</p>
@@ -1098,6 +1262,131 @@ export function ProjectDetailPage() {
         </div>
       ) : null}
 
+      {isAdmin && isAddMemberModalOpen ? (
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={closeAddMemberModal}
+        >
+          <section
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-member-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <h2 id="add-member-title">Invite someone to this project</h2>
+              </div>
+              <button
+                className="icon-button"
+                type="button"
+                onClick={closeAddMemberModal}
+                aria-label="Close add member popup"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            <form
+              className="project-form"
+              onSubmit={handleSubmitMember(handleAddMember)}
+            >
+              <label className="field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  placeholder="member@example.com"
+                  {...registerMember("email", {
+                    required: "Email is required",
+                  })}
+                />
+                {memberFormErrors.email ? (
+                  <small>{memberFormErrors.email.message}</small>
+                ) : null}
+              </label>
+
+              <label className="field">
+                <span>Role</span>
+                <select {...registerMember("role")}>
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+
+              {addMemberError?.data?.message ? (
+                <p className="form-error">{addMemberError.data.message}</p>
+              ) : null}
+
+              <div className="modal-actions">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={closeAddMemberModal}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={isAddingMember}
+                >
+                  {isAddingMember ? "Adding..." : "Add member"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+
+      {isMembersDrawerOpen ? (
+        <div
+          className="drawer-overlay"
+          role="presentation"
+          onClick={() => setIsMembersDrawerOpen(false)}
+        >
+          <aside
+            className="side-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="members-drawer-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="side-drawer-header">
+              <h2 id="members-drawer-title">Project members</h2>
+              <button
+                className="action-icon-button action-icon-button-delete"
+                type="button"
+                onClick={() => setIsMembersDrawerOpen(false)}
+                aria-label="Close members panel"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            <div className="side-drawer-body ">
+              {members.map((member) => (
+                <div
+                  className="member-row"
+                  key={member._id || member.user?._id}
+                >
+                  <div>
+                    <strong>
+                      {member.user?.fullName || member.user?.username}
+                    </strong>
+                    <p>@{member.user?.username || "member"}</p>
+                  </div>
+                  <span className="pill">{member.role}</span>
+                </div>
+              ))}
+              {!membersLoading && !members.length ? (
+                <p>No members found.</p>
+              ) : null}
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }

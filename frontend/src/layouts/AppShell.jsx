@@ -6,7 +6,7 @@ import { clearCredentials } from "../features/auth/authSlice";
 import { useGetProjectByIdQuery } from "../services/projectApi";
 import { useGetTaskByIdQuery } from "../services/taskApi";
 import { resolveAssetUrl } from "../utils/assets";
-import { ProjectsIcon, SidebarIcon } from "../icons/icons";
+import { CloseIcon, ProjectsIcon, SidebarIcon } from "../icons/icons";
 
 function getSidebarLabel(value, fallback) {
   if (!value) {
@@ -218,7 +218,6 @@ export function AppShell() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">Sign out</p>
                 <h2 id="logout-confirm-title">Sign out of Syncora?</h2>
               </div>
               <button
@@ -227,7 +226,7 @@ export function AppShell() {
                 onClick={() => setIsLogoutConfirmOpen(false)}
                 aria-label="Close sign out popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 

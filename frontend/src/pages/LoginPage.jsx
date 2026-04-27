@@ -40,7 +40,6 @@ export function LoginPage() {
   return (
     <div className="form-stack auth-form-shell">
       <div className="auth-form-header">
-        <p className="eyebrow">Welcome back</p>
         <h2>Sign in to your workspace</h2>
         <p className="muted-text">
           Use your account to continue managing projects, tasks, and team conversations.

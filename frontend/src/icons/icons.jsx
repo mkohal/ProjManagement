@@ -5,9 +5,9 @@ export const SearchIcon = () => {
       height="24px"
       viewBox="0 -960 960 960"
       width="24px"
-      fill="#999999"
+      fill="#666666"
     >
-      <path d="M791-88 525.79-353.33q-29.46 21.66-68.46 34.33-39 12.67-85 12.67-117.04 0-197.85-80.87-80.81-80.87-80.81-196.67 0-115.8 80.87-196.46Q255.41-861 371.87-861q115.13 0 195.8 80.81 80.66 80.81 80.66 196.52 0 46.34-12.5 84-12.5 37.67-35.83 70l267 266L791-88ZM371.25-412.33q72.59 0 121.84-49.17 49.24-49.17 49.24-121.76 0-72.58-49.24-122.16Q443.84-755 371.25-755q-73.25 0-122.42 49.58-49.16 49.58-49.16 122.16 0 72.59 49.16 121.76 49.17 49.17 122.42 49.17Z" />
+      <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
     </svg>
   );
 };
@@ -26,20 +26,19 @@ export const AddIcon = () => {
   );
 };
 
-export const DownArrow = () => {
+export const FilterIcon = () => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      height="20px"
+      height="24px"
       viewBox="0 -960 960 960"
-      width="20px"
-      fill="#000000"
+      width="24px"
+      fill="#666666"
     >
-      <path d="M480-346 220-605h520L480-346Z" />
+      <path d="M440-160q-17 0-28.5-11.5T400-200v-240L168-736q-15-20-4.5-42t36.5-22h560q26 0 36.5 22t-4.5 42L560-440v240q0 17-11.5 28.5T520-160h-80Zm40-308 198-252H282l198 252Zm0 0Z" />
     </svg>
   );
 };
-
 
 export const SidebarIcon = () => {
   return (
@@ -70,4 +69,60 @@ export const ProjectsIcon = () => {
   );
 };
 
+export const EditIcon = () => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      height="24px"
+      viewBox="0 0 24 24"
+      width="24px"
+      fill="#2854C5"
+    >
+      <path d="M0 0h24v24H0V0z" fill="none" />
+      <path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z" />
+    </svg>
+  );
+};
+export const DeleteIcon = () => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      height="24px"
+      viewBox="0 0 24 24"
+      width="24px"
+      fill="#8B1A10"
+    >
+      <path d="M0 0h24v24H0V0z" fill="none" />
+      <path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z" />
+    </svg>
+  );
+};
 
+export const MemberAddIcon = () => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      height="24px"
+      viewBox="0 0 24 24"
+      width="24px"
+      fill="#666666"
+    >
+      <path d="M0 0h24v24H0V0z" fill="none" />
+      <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0-6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 8c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm-6 4c.22-.72 3.31-2 6-2 2.7 0 5.8 1.29 6 2H9zm-3-3v-3h3v-2H6V7H4v3H1v2h3v3z" />
+    </svg>
+  );
+}
+export const CloseIcon = () => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      height="24px"
+      viewBox="0 0 24 24"
+      width="24px"
+      fill="#8B1A10"
+    >
+      <path d="M0 0h24v24H0V0z" fill="none" />
+      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" />
+    </svg>
+  );
+}
