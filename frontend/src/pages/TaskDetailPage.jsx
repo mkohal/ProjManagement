@@ -13,6 +13,7 @@ import {
   useUpdateTaskDetailsMutation,
   useUpdateSubtaskStatusMutation,
 } from "../services/taskApi";
+import { CloseIcon, DeleteIcon, EditIcon } from "../icons/icons";
 
 const taskStatusOptions = [
   { value: "todo", label: "To do" },
@@ -27,6 +28,22 @@ const formatStatusLabel = (status) =>
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+
+const getTaskStatusPillClass = (status) => {
+  switch (status) {
+    case "done":
+      return "status-pill status-pill-done";
+    case "on_hold":
+      return "status-pill status-pill-on-hold";
+    case "in_progress":
+      return "status-pill status-pill-in-progress";
+    case "testing":
+      return "status-pill status-pill-testing";
+    case "todo":
+    default:
+      return "status-pill status-pill-todo";
+  }
+};
 
 export function TaskDetailPage() {
   const { projectId, taskId } = useParams();
@@ -355,7 +372,6 @@ export function TaskDetailPage() {
       <section className="hero-panel">
         <div className="hero-actions">
           <div>
-            <p className="eyebrow">Task workspace</p>
             <h1>{task?.title}</h1>
             <p>{task?.description || "No description added yet."}</p>
           </div>
@@ -364,21 +380,25 @@ export function TaskDetailPage() {
             {isAdmin ? (
               <>
                 <button
-                  className="secondary-button"
+                  className="action-icon-button action-icon-button-edit"
                   type="button"
                   onClick={() => {
                     setSuccessMessage("");
                     setIsEditTaskModalOpen(true);
                   }}
+                  aria-label="Edit task"
+                  title="Edit task"
                 >
-                  Edit task
+                  <EditIcon />
                 </button>
                 <button
-                  className="danger-button"
+                  className="action-icon-button action-icon-button-delete"
                   type="button"
                   onClick={() => setIsDeleteTaskModalOpen(true)}
+                  aria-label="Delete task"
+                  title="Delete task"
                 >
-                  Delete task
+                  <DeleteIcon />
                 </button>
               </>
             ) : null}
@@ -406,7 +426,6 @@ export function TaskDetailPage() {
       <section className="panel">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Subtasks</p>
             <h2>Break the work down</h2>
           </div>
           {isAdmin ? (
@@ -454,7 +473,7 @@ export function TaskDetailPage() {
                 </div>
               </div>
               <div className="task-row-actions">
-                <label className="status-pill">
+                <label className={getTaskStatusPillClass(subtask.status)}>
                   <span className="sr-only">Update subtask status</span>
                   <select
                     value={subtask.status || "todo"}
@@ -478,22 +497,26 @@ export function TaskDetailPage() {
                 {isAdmin ? (
                   <>
                     <button
-                      className="secondary-button task-action-button"
+                      className="action-icon-button action-icon-button-edit task-action-button"
                       type="button"
                       onClick={() => openEditSubtaskModal(subtask)}
+                      aria-label={`Edit ${subtask.title}`}
+                      title="Edit subtask"
                     >
-                      Edit
+                      <EditIcon />
                     </button>
                     <button
-                      className="danger-button task-action-button"
+                      className="action-icon-button action-icon-button-delete task-action-button"
                       type="button"
                       onClick={() => {
                         setSuccessMessage("");
                         setActiveSubtask(subtask);
                         setIsDeleteSubtaskModalOpen(true);
                       }}
+                      aria-label={`Delete ${subtask.title}`}
+                      title="Delete subtask"
                     >
-                      Delete
+                      <DeleteIcon />
                     </button>
                   </>
                 ) : null}
@@ -515,7 +538,6 @@ export function TaskDetailPage() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">Edit task</p>
                 <h2 id="edit-task-modal-title">Update task details</h2>
               </div>
               <button
@@ -524,7 +546,7 @@ export function TaskDetailPage() {
                 onClick={closeEditTaskModal}
                 aria-label="Close edit task popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 
@@ -609,7 +631,6 @@ export function TaskDetailPage() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">Add subtask</p>
                 <h2 id="add-subtask-modal-title">Create a subtask</h2>
               </div>
               <button
@@ -618,7 +639,7 @@ export function TaskDetailPage() {
                 onClick={closeAddSubtaskModal}
                 aria-label="Close add subtask popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 
@@ -703,7 +724,6 @@ export function TaskDetailPage() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">Edit subtask</p>
                 <h2 id="edit-subtask-modal-title">Update subtask details</h2>
               </div>
               <button
@@ -712,7 +732,7 @@ export function TaskDetailPage() {
                 onClick={closeEditSubtaskModal}
                 aria-label="Close edit subtask popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 
@@ -801,7 +821,6 @@ export function TaskDetailPage() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">Delete subtask</p>
                 <h2 id="delete-subtask-modal-title">Delete this subtask?</h2>
               </div>
               <button
@@ -810,7 +829,7 @@ export function TaskDetailPage() {
                 onClick={() => setIsDeleteSubtaskModalOpen(false)}
                 aria-label="Close delete subtask popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 
@@ -858,7 +877,6 @@ export function TaskDetailPage() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">Delete task</p>
                 <h2 id="delete-task-modal-title">Remove this task?</h2>
               </div>
               <button
@@ -867,7 +885,7 @@ export function TaskDetailPage() {
                 onClick={() => setIsDeleteTaskModalOpen(false)}
                 aria-label="Close delete task popup"
               >
-                ×
+                <CloseIcon />
               </button>
             </div>
 

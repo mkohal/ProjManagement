@@ -83,7 +83,6 @@ export function SettingsPage() {
     <div className="page-stack">
       <section className="hero-panel">
         <div>
-          <p className="eyebrow">Settings</p>
           <h1>Profile settings</h1>
           <p>Update your profile photo, username, and login password.</p>
         </div>
@@ -93,7 +92,6 @@ export function SettingsPage() {
         <section className="panel">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Profile</p>
               <h2>Update profile</h2>
             </div>
           </div>
@@ -144,7 +142,6 @@ export function SettingsPage() {
         <section className="panel">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Security</p>
               <h2>Change password</h2>
             </div>
           </div>
